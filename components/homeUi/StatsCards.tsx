@@ -1,39 +1,29 @@
-"use client"
-
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatarData } from "@/utils/types"
 import type { RegistroPonto } from "@/utils/types"
 
-interface PontoStatsProps {
+interface StatsCardsProps {
   totalRegistros: number
   diasUnicos: number
   ultimoRegistro: RegistroPonto | null
-  loading?: boolean
 }
 
-export function PontoStats({
-  totalRegistros,
-  diasUnicos,
-  ultimoRegistro,
-  loading,
-}: PontoStatsProps) {
+export function StatsCards({ totalRegistros, diasUnicos, ultimoRegistro }: StatsCardsProps) {
   const stats = [
     {
       label: "Total de registros",
-      value: loading ? null : String(totalRegistros),
+      value: String(totalRegistros),
       size: "text-3xl",
     },
     {
       label: "Dias únicos",
-      value: loading ? null : String(diasUnicos),
+      value: String(diasUnicos),
       size: "text-3xl",
     },
     {
       label: "Último registro",
-      value: loading
-        ? null
-        : ultimoRegistro
+      value: ultimoRegistro
         ? `${formatarData(ultimoRegistro.data)} ${ultimoRegistro.horario}`
         : "—",
       size: "text-lg",
@@ -48,11 +38,23 @@ export function PontoStats({
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {label}
             </p>
-            {value === null ? (
-              <Skeleton className="mt-3 h-8 w-20" />
-            ) : (
-              <p className={`mt-2 font-semibold tabular-nums ${size}`}>{value}</p>
-            )}
+            <p className={`mt-2 font-semibold tabular-nums ${size}`}>{value}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </section>
+  )
+}
+
+// Loading skeleton
+export function StatsCardsSkeleton() {
+  return (
+    <section className="grid gap-3 md:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Card key={i} className="border-border/60 shadow-none">
+          <CardContent className="pt-5 pb-5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="mt-3 h-8 w-20" />
           </CardContent>
         </Card>
       ))}

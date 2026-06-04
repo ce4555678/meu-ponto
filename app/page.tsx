@@ -1,156 +1,89 @@
-"use client"
-import { PontoStats } from "@/components/PontoStats"
-import { PontoTable } from "@/components/PontoTable"
-import { DialogNovaBatida } from "@/components/DialogNovaBatida"
-import { DialogColaborador } from "@/components/DialogColaborador"
-import { ThemeToggle } from "@/components/ThemeToggle"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Printer, UserCog, AlertCircle, RefreshCw } from "lucide-react"
-import HomeUi from "@/components/homeUi"
-import { usePonto } from "@/components/usePonto"
-import { useState } from "react"
+import { Suspense } from "react"
+import { redirect } from "next/navigation"
+import { getHomeData } from "@/utils/supabase/queries"
+import { isSupabaseConfigured } from "@/utils/supabase/server"
+import { HomeContent } from "./HomeContent"
+import {
+  HeaderSkeleton,
+  StatsCardsSkeleton,
+  ColaboradorCardSkeleton,
+  HorariosTableSkeleton,
+} from "@/components/homeUi"
 
-export default function PageHome() {
+interface PageProps {
+  searchParams: Promise<{ mes?: string; ano?: string }>
+}
+
+export default async function PageHome({ searchParams }: PageProps) {
+  const params = await searchParams
   const hoje = new Date()
-  const [mes, setMes] = useState<number>(hoje.getMonth() + 1)
-  const [ano, setAno] = useState<number>(hoje.getFullYear())
+  const mes = params.mes ? Number(params.mes) : hoje.getMonth() + 1
+  const ano = params.ano ? Number(params.ano) : hoje.getFullYear()
 
-  const {
-    colaborador,
-    registros,
-    diasAgrupados,
-    totalRegistros,
-    diasUnicos,
-    ultimoRegistro,
-    registrarBatida,
-    editarRegistro,
-    excluirRegistro,
-    excluirDia,
-    salvarColaborador,
-    loading,
-    error,
-  } = usePonto(mes, ano)
-
-  // Estado de carregamento inicial
-  if (loading && !colaborador) {
+  // Verifica se Supabase está configurado
+  if (!isSupabaseConfigured()) {
     return (
       <div className="min-h-screen bg-background font-sans">
-        <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-            <div className="flex gap-2">
-              <Skeleton className="h-9 w-32" />
-              <Skeleton className="h-9 w-28" />
-              <Skeleton className="h-9 w-24" />
-            </div>
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-6 py-8 text-center">
+            <h2 className="text-lg font-semibold text-amber-700 dark:text-amber-400">
+              Supabase não configurado
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Configure as variáveis de ambiente NEXT_PUBLIC_SUPABASE_URL e
+              NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY para usar o sistema.
+            </p>
           </div>
-          <Separator />
-          <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
-            <div className="grid gap-3 md:grid-cols-3">
-              <Skeleton className="h-24 rounded-lg" />
-              <Skeleton className="h-24 rounded-lg" />
-              <Skeleton className="h-24 rounded-lg" />
-            </div>
-            <Skeleton className="h-24 rounded-lg" />
-          </div>
-          <Skeleton className="h-96 rounded-lg" />
         </div>
       </div>
     )
   }
 
-  if (!colaborador) return null
+  // Busca dados via SSR
+  const result = await getHomeData(mes, ano)
+
+  // Se requer autenticação, redireciona para login
+  if (!result.success && result.requiresAuth) {
+    redirect("/login")
+  }
+
+  // Se houve erro não relacionado a auth
+  if (!result.success) {
+    return (
+      <div className="min-h-screen bg-background font-sans">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-6 py-8 text-center">
+            <h2 className="text-lg font-semibold text-destructive">
+              Erro ao carregar dados
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">{result.error}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background font-sans">
       <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
-        {/* Alerta de erro */}
-        {error && (
-          <div className="flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-destructive">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium">{error}</p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto h-8 text-destructive hover:text-destructive hover:bg-destructive/20"
-              onClick={() => window.location.reload()}
-            >
-              <RefreshCw className="mr-1.5 h-4 w-4" />
-              Tentar novamente
-            </Button>
-          </div>
-        )}
-
-        {/* Cabeçalho */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-blue-600 uppercase dark:text-blue-400">
-              Painel de ponto
-            </p>
-            <h1 className="mt-1.5 text-3xl font-semibold tracking-tight text-foreground">
-              Controle de horários
-            </h1>
-            <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground">
-              Sistema Supabase integrado. Gerencie seus registros de ponto
-              completo.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <DialogNovaBatida onSalvar={registrarBatida} />
-
-            <DialogColaborador
-              colaborador={colaborador}
-              onSalvar={salvarColaborador}
-              trigger={
-                <Button variant="outline" size="sm">
-                  <UserCog className="mr-1.5 h-4 w-4" />
-                  Colaborador
-                </Button>
-              }
-            />
-
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="mr-1.5 h-4 w-4" />
-              Imprimir
-            </Button>
-
-            <ThemeToggle />
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Stats + Cadastro */}
-        <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
-          <PontoStats
-            totalRegistros={totalRegistros}
-            diasUnicos={diasUnicos}
-            ultimoRegistro={ultimoRegistro}
-            loading={loading}
+        <Suspense
+          fallback={
+            <>
+              <HeaderSkeleton />
+              <div className="grid gap-4 xl:grid-cols-[1.4fr_0.6fr]">
+                <StatsCardsSkeleton />
+                <ColaboradorCardSkeleton />
+              </div>
+              <HorariosTableSkeleton />
+            </>
+          }
+        >
+          <HomeContent
+            initialData={result.data}
+            mes={mes}
+            ano={ano}
           />
-          <HomeUi.card />
-        </div>
-
-        {/* Tabela */}
-        <PontoTable
-          diasAgrupados={diasAgrupados}
-          registros={registros}
-          mes={mes}
-          ano={ano}
-          onMesChange={setMes}
-          onAnoChange={setAno}
-          onEditar={editarRegistro}
-          onExcluirRegistro={excluirRegistro}
-          onExcluirDia={excluirDia}
-          loading={loading}
-        />
+        </Suspense>
       </div>
     </div>
   )
