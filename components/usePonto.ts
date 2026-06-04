@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo, useEffect } from "react"
-import { createClient } from "@/utils/supabase/client"
+import { createClient, isSupabaseConfigured } from "@/utils/supabase/client"
 import type {
   RegistroPonto,
   Colaborador,
@@ -10,6 +10,17 @@ import type {
 } from "../utils/types"
 import { calcularHorasTrabalhadas, calcularStatusDia } from "../utils/types"
 
+// Dados demo para quando o Supabase não está configurado
+const COLABORADOR_DEMO: Colaborador = {
+  nome: "Usuário Demo",
+  matricula: "DEMO-001",
+  admissao: new Date().toISOString().split("T")[0],
+  contratante: "Empresa Demo",
+  cnpj: "00.000.000/0001-00",
+  ctps: "0000000/000",
+  ativo: true,
+}
+
 export function usePonto(mesFiltro: number, anoFiltro: number) {
   const [registros, setRegistros] = useState<RegistroPonto[]>([])
   const [colaborador, setColaborador] = useState<Colaborador | null>(null)
@@ -17,7 +28,8 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const supabase = useMemo(() => createClient(), [])
+  const supabaseConfigured = isSupabaseConfigured()
+  const supabase = useMemo(() => (supabaseConfigured ? createClient() : null), [supabaseConfigured])
 
   // Carrega o colaborador do Supabase
   useEffect(() => {
@@ -25,21 +37,21 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
       setLoading(true)
       setError(null)
 
+      // Se Supabase não está configurado, usa modo demo
+      if (!supabase) {
+        setColaborador(COLABORADOR_DEMO)
+        setColaboradorId(null)
+        setLoading(false)
+        return
+      }
+
       try {
         const { data: userData } = await supabase.auth.getUser()
         const userId = userData?.user?.id
 
         if (!userId) {
           // Usuário não logado - usa dados padrão para demo
-          setColaborador({
-            nome: "Usuário Demo",
-            matricula: "DEMO-001",
-            admissao: new Date().toISOString().split("T")[0],
-            contratante: "Empresa Demo",
-            cnpj: "00.000.000/0001-00",
-            ctps: "0000000/000",
-            ativo: true,
-          })
+          setColaborador(COLABORADOR_DEMO)
           setColaboradorId(null)
           setLoading(false)
           return
@@ -101,15 +113,7 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
         console.error("Erro ao carregar colaborador:", err)
         setError("Erro ao carregar dados do colaborador")
         // Fallback para dados demo em caso de erro
-        setColaborador({
-          nome: "Usuário Demo",
-          matricula: "DEMO-001",
-          admissao: new Date().toISOString().split("T")[0],
-          contratante: "Empresa Demo",
-          cnpj: "00.000.000/0001-00",
-          ctps: "0000000/000",
-          ativo: true,
-        })
+        setColaborador(COLABORADOR_DEMO)
       } finally {
         setLoading(false)
       }
@@ -121,7 +125,7 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
   // Carrega os registros do Supabase filtrados por mês/ano
   useEffect(() => {
     async function loadRegistros() {
-      if (!colaboradorId) {
+      if (!colaboradorId || !supabase) {
         setRegistros([])
         return
       }
@@ -218,6 +222,11 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
       horario?: string,
       observacao?: string
     ) => {
+      if (!supabase) {
+        setError("Supabase não configurado. Configure as variáveis de ambiente.")
+        return
+      }
+
       if (!colaboradorId) {
         setError("Colaborador não encontrado. Faça login para registrar batidas.")
         return
@@ -296,6 +305,11 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
   // Edita um registro existente
   const editarRegistro = useCallback(
     async (id: number, dados: Partial<Pick<RegistroPonto, "horario" | "observacao">>) => {
+      if (!supabase) {
+        setError("Supabase não configurado.")
+        return
+      }
+
       try {
         const { error: updateError } = await supabase
           .from("horarios")
@@ -320,6 +334,11 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
   // Exclui um registro específico
   const excluirRegistro = useCallback(
     async (id: number) => {
+      if (!supabase) {
+        setError("Supabase não configurado.")
+        return
+      }
+
       try {
         const { error: deleteError } = await supabase
           .from("horarios")
@@ -342,7 +361,7 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
   // Exclui todos os registros de um dia
   const excluirDia = useCallback(
     async (dia: string) => {
-      if (!colaboradorId) return
+      if (!colaboradorId || !supabase) return
 
       const [ano, mes, diaNum] = dia.split("-").map(Number)
 
@@ -371,8 +390,8 @@ export function usePonto(mesFiltro: number, anoFiltro: number) {
   // Salva os dados do colaborador no Supabase
   const salvarColaborador = useCallback(
     async (dados: Colaborador) => {
-      if (!colaboradorId) {
-        // Apenas atualiza localmente se não há ID
+      if (!colaboradorId || !supabase) {
+        // Apenas atualiza localmente se não há ID ou Supabase
         setColaborador(dados)
         return
       }
