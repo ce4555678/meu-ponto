@@ -14,7 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Clock, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Clock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
+import { createClient, isSupabaseConfigured } from "@/utils/supabase/client"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,6 +24,8 @@ export default function LoginPage() {
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+
+  const supabaseConfigured = isSupabaseConfigured()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -33,15 +36,39 @@ export default function LoginPage() {
       return
     }
 
+    if (!supabaseConfigured) {
+      setErro("Supabase não configurado. Configure as variáveis de ambiente.")
+      return
+    }
+
     setLoading(true)
 
-    // Simula autenticação (substituir por integração real)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const supabase = createClient()
       
-      // Aqui você pode adicionar a lógica de autenticação real
-      // Por enquanto, apenas redireciona para a home
+      if (!supabase) {
+        setErro("Erro ao conectar com o Supabase.")
+        return
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha,
+      })
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          setErro("Email ou senha incorretos.")
+        } else if (error.message.includes("Email not confirmed")) {
+          setErro("Por favor, confirme seu email antes de fazer login.")
+        } else {
+          setErro(error.message)
+        }
+        return
+      }
+
       router.push("/")
+      router.refresh()
     } catch {
       setErro("Erro ao fazer login. Tente novamente.")
     } finally {
@@ -76,6 +103,16 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
+              {/* Aviso Supabase não configurado */}
+              {!supabaseConfigured && (
+                <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    Supabase não configurado. Configure as variáveis de ambiente para habilitar a autenticação.
+                  </span>
+                </div>
+              )}
+
               {/* Mensagem de erro */}
               {erro && (
                 <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
