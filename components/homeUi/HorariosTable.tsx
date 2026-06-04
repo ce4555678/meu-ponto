@@ -2,54 +2,85 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select"
 import {
-  Table, TableBody, TableCell,
-  TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Pencil, Trash2 } from "lucide-react"
 import {
-  BATIDA_META, minutosParaLabel, formatarData,
-  type TipoBatida, type DiaAgrupado, type RegistroPonto,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Trash2 } from "lucide-react"
+import {
+  BATIDA_META,
+  minutosParaLabel,
+  formatarData,
+  type TipoBatida,
+  type DiaAgrupado,
+  type RegistroPonto,
 } from "@/utils/types"
-import { StatusBadge } from "./StatusBadge"
-import { DialogEditarBatida } from "./DialogEditarBatida"
+import { StatusBadge } from "@/components/StatusBadge"
+import { DialogEditarBatida } from "@/components/DialogEditarBatida"
 
 const MESES = [
-  { value: "1",  label: "Janeiro"  }, { value: "2",  label: "Fevereiro" },
-  { value: "3",  label: "Março"    }, { value: "4",  label: "Abril"     },
-  { value: "5",  label: "Maio"     }, { value: "6",  label: "Junho"     },
-  { value: "7",  label: "Julho"    }, { value: "8",  label: "Agosto"    },
-  { value: "9",  label: "Setembro" }, { value: "10", label: "Outubro"   },
-  { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro"  },
+  { value: "1", label: "Janeiro" },
+  { value: "2", label: "Fevereiro" },
+  { value: "3", label: "Março" },
+  { value: "4", label: "Abril" },
+  { value: "5", label: "Maio" },
+  { value: "6", label: "Junho" },
+  { value: "7", label: "Julho" },
+  { value: "8", label: "Agosto" },
+  { value: "9", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
 ]
 
 const COLUNAS: TipoBatida[] = [
-  "inicio_expediente", "inicio_almoco", "retorno_almoco",
-  "inicio_cafe", "retorno_cafe", "termino_expediente",
+  "inicio_expediente",
+  "inicio_almoco",
+  "retorno_almoco",
+  "inicio_cafe",
+  "retorno_cafe",
+  "termino_expediente",
 ]
 
 const anoAtual = new Date().getFullYear()
 const ANOS = [anoAtual - 1, anoAtual, anoAtual + 1]
 
-interface PontoTableProps {
+interface HorariosTableProps {
   diasAgrupados: DiaAgrupado[]
   registros: RegistroPonto[]
   mes: number
   ano: number
-  onMesChange: (v: number) => void
-  onAnoChange: (v: number) => void
+  onMesChange: (v: number | null) => void
+  onAnoChange: (v: number | null) => void
   onEditar: (id: number, dados: Partial<Pick<RegistroPonto, "horario" | "observacao">>) => void
   onExcluirRegistro: (id: number) => void
   onExcluirDia: (data: string) => void
-  loading?: boolean
 }
 
 interface EditTarget {
@@ -60,20 +91,29 @@ interface EditTarget {
   observacao?: string
 }
 
-export function PontoTable(
-  {
-  diasAgrupados, registros, mes, ano,
-  onMesChange, onAnoChange,
-  onEditar, onExcluirRegistro, onExcluirDia,
-  loading,
-}: PontoTableProps
-) {
+export function HorariosTable({
+  diasAgrupados,
+  registros,
+  mes,
+  ano,
+  onMesChange,
+  onAnoChange,
+  onEditar,
+  onExcluirRegistro,
+  onExcluirDia,
+}: HorariosTableProps) {
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
 
   function abrirEdicao(dia: DiaAgrupado, tipo: TipoBatida) {
     const reg = registros.find((r) => r.data === dia.data && r.tipo === tipo)
     if (!reg) return
-    setEditTarget({ id: reg.id, data: dia.data, tipo, horario: reg.horario, observacao: reg.observacao })
+    setEditTarget({
+      id: reg.id,
+      data: dia.data,
+      tipo,
+      horario: reg.horario,
+      observacao: reg.observacao,
+    })
   }
 
   return (
@@ -84,33 +124,54 @@ export function PontoTable(
             <div>
               <CardTitle>Registros de horário</CardTitle>
               <CardDescription className="mt-1">
-                Clique em um horário para editá-lo. Linhas com "—" indicam batida ausente.
+                Clique em um horário para editá-lo. Linhas com {"\"—\""} indicam
+                batida ausente.
               </CardDescription>
             </div>
 
             <div className="flex flex-wrap gap-3 items-end shrink-0">
               <div className="grid gap-1.5">
-                <Label htmlFor="filterMonth" className="text-xs text-muted-foreground">Mês</Label>
-                <Select value={String(mes)} onValueChange={(v) => onMesChange(Number(v))}>
+                <Label
+                  htmlFor="filterMonth"
+                  className="text-xs text-muted-foreground"
+                >
+                  Mês
+                </Label>
+                <Select
+                  value={String(mes)}
+                  onValueChange={(v) => onMesChange(Number(v))}
+                >
                   <SelectTrigger id="filterMonth" className="w-36 h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {MESES.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="filterYear" className="text-xs text-muted-foreground">Ano</Label>
-                <Select value={String(ano)} onValueChange={(v) => onAnoChange(Number(v))}>
+                <Label
+                  htmlFor="filterYear"
+                  className="text-xs text-muted-foreground"
+                >
+                  Ano
+                </Label>
+                <Select
+                  value={String(ano)}
+                  onValueChange={(v) => onAnoChange(Number(v))}
+                >
                   <SelectTrigger id="filterYear" className="w-24 h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {ANOS.map((a) => (
-                      <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                      <SelectItem key={a} value={String(a)}>
+                        {a}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -120,13 +181,7 @@ export function PontoTable(
         </CardHeader>
 
         <CardContent>
-          {loading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-11 w-full rounded-md" />
-              ))}
-            </div>
-          ) : diasAgrupados.length === 0 ? (
+          {diasAgrupados.length === 0 ? (
             <div className="rounded-lg border border-dashed px-6 py-12 text-center">
               <p className="text-sm text-muted-foreground">
                 Nenhum registro para{" "}
@@ -140,7 +195,10 @@ export function PontoTable(
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
                     <TableHead className="w-28">Data</TableHead>
                     {COLUNAS.map((tipo) => (
-                      <TableHead key={tipo} className="text-center whitespace-nowrap text-xs">
+                      <TableHead
+                        key={tipo}
+                        className="text-center whitespace-nowrap text-xs"
+                      >
                         {BATIDA_META[tipo].labelCurto}
                       </TableHead>
                     ))}
@@ -187,9 +245,11 @@ export function PontoTable(
                       })}
 
                       <TableCell className="text-center tabular-nums text-sm font-medium">
-                        {dia.horasTrabalhadas !== null
-                          ? minutosParaLabel(dia.horasTrabalhadas)
-                          : <span className="text-muted-foreground/40">—</span>}
+                        {dia.horasTrabalhadas !== null ? (
+                          minutosParaLabel(dia.horasTrabalhadas)
+                        ) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
                       </TableCell>
 
                       <TableCell>
@@ -239,5 +299,32 @@ export function PontoTable(
         />
       )}
     </>
+  )
+}
+
+// Loading skeleton
+export function HorariosTableSkeleton() {
+  return (
+    <Card className="border-border/60 shadow-none">
+      <CardHeader>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="mt-2 h-4 w-72" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="h-9 w-36" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-11 w-full rounded-md" />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
