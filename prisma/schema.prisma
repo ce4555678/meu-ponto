@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id       String   @id @default(uuid())
+  email    String   @unique
+  password String
+  colaborador Colaborador?
+}
+
+model Colaborador {
+  id          Int       @id @default(autoincrement())
+  nome        String
+  matricula   String
+  admissao    DateTime
+  contratante String
+  cnpj        String
+  ctps        String
+  userId      String    @unique
+  createdAt   DateTime  @default(now())
+  horarios    Horario[]
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+}
+
+model Horario {
+  id            Int        @id @default(autoincrement())
+  colaboradorId Int
+  dia           Int
+  mes           Int
+  ano           Int
+  horario       String
+  type          TipoBatida
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  colaborador Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+
+  @@unique([colaboradorId, dia, mes, ano, type])
+}
+
+enum TipoBatida {
+  inicio_expediente
+  inicio_almoco
+  retorno_almoco
+  inicio_cafe
+  retorno_cafe
+  termino_expediente
+}

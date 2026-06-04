@@ -1,5 +1,6 @@
-import { Geist, Geist_Mono, Inter } from "next/font/google"
-
+import { Geist_Mono, Inter } from "next/font/google"
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils";
@@ -18,12 +19,18 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="pt-BR"
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        {/* <ThemeProvider> */}
+          <TooltipProvider>
+            <NuqsAdapter>
+              {children}
+            </NuqsAdapter>
+          </TooltipProvider>
+        {/* </ThemeProvider> */}
       </body>
     </html>
   )
